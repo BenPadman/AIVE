@@ -1,0 +1,547 @@
+# @File(label="Choose a file", description="Select the file to generate features for") imagefile
+# @File(label="Output directory", description="Select the output directory", style="directory") outputDir
+# @File(label="Temporary directory", description="Select the output directory", style="directory") TempDir
+/*
+ * READ ME BEFORE RUNNING SCRIPT: 
+ * Before proceeding, ensure the following is true:
+ * 1) Your stack needs to be spatially registered/aligned. 
+ * 2) Your stack needs to have the correct spatial scale set in FIJI [by selecting Image->Properties (Ctrl+Shift+P)]; Enter the correct X/Y scale and the Z-slice thickness.
+ * 3) Your stack needs to be saved as a tif.
+ * Generating features takes a long time, so heed these warnings.
+ * 
+ * Other notes:
+ * You will need a "temporary" directory stored somewhere local, ideally on an SSD; this is where the partially computed features will be stored before they are combined.
+ * 
+ * 
+ * This is the script written to generate 2d feature stacks, which can be appended to the 3D feature stacks for even more feature information.
+ * 
+ * To control the features that are generated, please skip to the section called "***DEFINE THE 2D FEATURES***"
+ */
+
+
+import ij.*;
+import ij.process.*;
+import ij.plugin.filter.*;
+import ij.plugin.ContrastEnhancer;
+import ij.plugin.ZProjector;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.gui.Roi;
+import ij.gui.PolygonRoi;
+import ij.plugin.Duplicator;
+import ij.process.FloatPolygon;
+import ij.process.StackConverter;
+import ij.plugin.filter.*;
+import ij.plugin.ContrastEnhancer;
+import ij.plugin.ZProjector;
+import trainableSegmentation.FeatureStack;
+import trainableSegmentation.FeatureStackArray;
+import trainableSegmentation.WekaSegmentation;
+import trainableSegmentation.utils.Utils;
+import ij.gui.*;
+import java.awt.*;
+import ij.plugin.*;
+import ij.plugin.frame.*; 
+
+imgpath=imagefile.getCanonicalPath();
+image = IJ.openVirtual(imgpath);
+calibration = image.getCalibration().copy();
+    new StackConverter(image).convertToGray32();
+    
+
+
+cal = image.getCalibration();  
+ImgTitle=image.title;
+VoxWidth=cal.pixelWidth;
+VoxDepth=cal.pixelDepth;
+dim = image.getDimensions(); //width, height, channels, slices, frames
+stackWidth = dim[ 0 ];
+stackHeight = dim[ 1 ];
+StackSlices = dim[ 3 ];
+   
+duplicator = new Duplicator();
+   
+// THIS IS WHERE YOU CREATE YOUR FEATURE STACKS
+VoxelAR = VoxDepth/VoxWidth;
+
+void CreateStandard2DStatistics(sigma) {
+	IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+		Mean = duplicator.run(image);
+	IJ.run(Mean, "Mean...", "radius="+sigma+" stack");
+	IJ.saveAs(Mean, "Tiff", TempDir+ File.separator +"2DMean_"+sigma+"px.tif");
+	Mean.close();
+		Median = duplicator.run(image);
+	IJ.run(Median, "Median...", "radius="+sigma+" stack");
+	IJ.saveAs(Median, "Tiff", TempDir+ File.separator +"2DMedian_"+sigma+"px.tif");
+	Median.close();
+		Variance = duplicator.run(image);
+	IJ.run(Variance, "Variance...", "radius="+sigma+" stack");
+	IJ.saveAs(Variance, "Tiff", TempDir+ File.separator +"2DVariance_"+sigma+"px.tif");
+	Variance.close();
+		Max = duplicator.run(image);
+	IJ.run(Max, "Maximum...", "radius="+sigma+" stack");
+	IJ.saveAs(Max, "Tiff", TempDir+ File.separator +"2DMax_"+sigma+"px.tif");
+	Max.close();
+		Min = duplicator.run(image);
+	IJ.run(Min, "Minimum...", "radius="+sigma+" stack");
+	IJ.saveAs(Min, "Tiff", TempDir+ File.separator +"2DMin_"+sigma+"px.tif");
+	Min.close();
+		Gauss = duplicator.run(image);
+	IJ.run(Gauss, "Gaussian Blur...", "radius="+sigma+" stack");
+	IJ.saveAs(Gauss, "Tiff", TempDir+ File.separator +"2DGaussian_"+sigma+"px.tif");
+	//	Gauss.close();
+	
+	IJ.run("Close All", "");
+	//Min.close();
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            System.gc();
+}	
+
+
+
+
+void Create2DNeighbors(sigma) {
+	IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x=-"+sigma+" y=-"+sigma+" interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir+ File.separator +"2DNeighborNW_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x=0 y=-"+sigma+" interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir+ File.separator +"2DNeighborNN_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x="+sigma+" y=-"+sigma+" interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir+ File.separator +"2DNeighborNE_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x=-"+sigma+" y=0 interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir+ File.separator+"2DNeighborWW_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+//IJ.run(imp, "Translate...", "x=0 y=0 interpolation=None"); //Centre is not required
+IJ.run(imp, "Translate...", "x="+sigma+" y=0 interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir + File.separator+"2DNeighborEE_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x=-"+sigma+" y="+sigma+" interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir + File.separator+"2DNeighborSW_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x=0 y="+sigma+" interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir+ File.separator +"2DNeighborSS_"+sigma+"px.tif");
+		imp.close();
+		imp = duplicator.run(image);
+IJ.run(imp, "Translate...", "x="+sigma+" y="+sigma+" interpolation=None stack");
+	IJ.saveAs(imp, "Tiff", TempDir + File.separator+"2DNeighborSE_"+sigma+"px.tif");
+		imp.close();
+
+	IJ.run("Close All", "");
+	//Min.close();
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            System.gc();
+}	
+
+void RunCLAHE(sigma) {
+IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+image.show();
+dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+// apply CLAHE to each component of the stack
+for ( f=1; f<=frames; f++ ) {
+  for ( s=1; s<=slices; s++ ) {
+    for ( c=1; c<=channels; c++ ) {
+      image.setPosition( c, s, f );
+      IJ.run( image, "Enhance Local Contrast (CLAHE)", "blocksize="+sigma+" histogram=128 maximum=3 mask=*None*");
+    }
+  }
+}
+IJ.saveAs(image, "Tiff", TempDir + File.separator+"2DCLAHE_"+sigma+"px.tif");
+IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            System.gc();
+
+}
+
+void UnsharpMask(sigma) {
+IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    IJ.run(image, "Unsharp Mask...", "radius="+sigma+" mask=0.75 stack");
+        new StackConverter(image).convertToGray32();
+IJ.saveAs(image, "Tiff", TempDir+ File.separator +"2DUnsharpMask_"+sigma+"px.tif");
+IJ.run("Close All", "");
+}
+void LogFilter() {
+IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+IJ.run(image, "Log", "stack");
+IJ.saveAs(image, "Tiff", TempDir+ File.separator +"2DLogFilter.tif");
+IJ.run("Close All", "");
+}
+
+
+void DetectXYLinearEdges(angle) {
+IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+    image.show();
+    dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+
+if (angle==0) {
+IJ.run(image, "Convolve...", "text1=[-1 -1 -1 \n2 2 2\n-1 -1 -1\n]  normalize stack"); //000
+suffix="000";
+IJ.saveAs(image, "Tiff", TempDir+ File.separator +"2DLinearEdgesXY_"+suffix+".tif");
+} else if (angle==45) {
+IJ.run(image, "Convolve...", "text1=[2 -1 -1 \n-1 2 -1\n-1 -1 2\n]  normalize stack"); //045
+suffix="045";
+IJ.saveAs(image, "Tiff", TempDir + File.separator+"2DLinearEdgesXY_"+suffix+".tif");
+} else if (angle==90) {
+IJ.run(image, "Convolve...", "text1=[-1 2 -1 \n-1 2 -1\n-1 2 -1\n] normalize stack"); //090
+suffix="090";
+IJ.saveAs(image, "Tiff", TempDir + File.separator+"2DLinearEdgesXY_"+suffix+".tif");
+} else if (angle==135) {
+IJ.run(image, "Convolve...", "text1=[-1 -1 2\n-1 2 -1\n2 -1 -1\n] normalize stack"); //135
+suffix="135";
+IJ.saveAs(image, "Tiff", TempDir + File.separator+"2DLinearEdgesXY_"+suffix+".tif");
+}
+IJ.run("Close All", "");
+}
+
+
+void Create2DEdges(sigma) {
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+image.show();
+dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+stackTEMP = new ImageStack(stackWidth, stackHeight);
+
+  for ( s=1; s<=slices; s++ ) {
+		imp1 = new ImagePlus("temp", image.getStack().getProcessor(s).duplicate());
+	IJ.run(imp1, "FeatureJ Edges", "compute smoothing="+sigma+" lower=[] higher=[]");
+	imp1.close();
+	ImagePlus imp2 = WindowManager.getImage("temp edges");
+                 stackTEMP.addSlice("TEMP", imp2.getProcessor());
+                 imp2.close();
+  }
+FinalStack = new ImagePlus("stack", stackTEMP);
+IJ.saveAs(FinalStack, "Tiff", TempDir + File.separator+"2DEdges_"+sigma+"px.tif");
+IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            stackTEMP = null;
+            System.gc();
+}
+
+void Create2DLaplacian(sigma) {
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+image.show();
+dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+stackTEMP = new ImageStack(stackWidth, stackHeight);
+  for ( s=1; s<=slices; s++ ) {
+		imp1 = new ImagePlus("temp", image.getStack().getProcessor(s).duplicate());
+	IJ.run(imp1, "FeatureJ Laplacian", "compute smoothing="+sigma);
+	imp1.close();
+	ImagePlus imp2 = WindowManager.getImage("temp Laplacian");
+                 stackTEMP.addSlice("TEMP", imp2.getProcessor());
+                 imp2.close();
+  }
+FinalStack = new ImagePlus("stack", stackTEMP);
+IJ.saveAs(FinalStack, "Tiff", TempDir + File.separator+"2DLaplacian_"+sigma+"px.tif");
+IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            stackTEMP = null;
+            System.gc();
+}
+
+void Create2DHessian(sigma) {
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+image.show();
+dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+stackTEMPa = new ImageStack(stackWidth, stackHeight);
+stackTEMPb = new ImageStack(stackWidth, stackHeight);
+  for ( s=1; s<=slices; s++ ) {
+		imp1 = new ImagePlus("temp", image.getStack().getProcessor(s).duplicate());
+IJ.run(imp1, "FeatureJ Hessian", "largest middle smallest absolute smoothing="+sigma);
+	imp1.close();
+	ImagePlus imp2a = WindowManager.getImage("temp smallest Hessian eigenvalues");
+	ImagePlus imp2b = WindowManager.getImage("temp largest Hessian eigenvalues");
+                 stackTEMPa.addSlice("TEMP", imp2a.getProcessor());
+                 imp2a.close();
+                 stackTEMPb.addSlice("TEMP", imp2b.getProcessor());
+                 imp2b.close();
+  }
+FinalStackA = new ImagePlus("stack", stackTEMPa);
+IJ.saveAs(FinalStackA, "Tiff", TempDir + File.separator+"2DHessianSML_"+sigma+"px.tif");
+FinalStackA.close();
+FinalStackB = new ImagePlus("stack", stackTEMPb);
+IJ.saveAs(FinalStackB, "Tiff", TempDir + File.separator+"2DHessianLRG_"+sigma+"px.tif");
+FinalStackB.close();
+IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            stackTEMP = null;
+            System.gc();
+}
+
+void Create2DDerivatives(sigma, DX) {
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+image.show();
+dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+stackTEMPa = new ImageStack(stackWidth, stackHeight);
+  for ( s=1; s<=slices; s++ ) {
+		imp1 = new ImagePlus("temp", image.getStack().getProcessor(s).duplicate());
+IJ.run(imp1, "FeatureJ Derivatives", "x-order="+DX+" y-order="+DX+" z-order=0 smoothing="+sigma);
+	imp1.close();
+	ImagePlus imp2a = WindowManager.getImage("temp dx"+DX+" dy"+DX+" dz0");
+                 stackTEMPa.addSlice("TEMP", imp2a.getProcessor());
+                 imp2a.close();
+  }
+FinalStackA = new ImagePlus("stack", stackTEMPa);
+IJ.saveAs(FinalStackA, "Tiff", TempDir + File.separator+"2DDerivatives_dXY"+DX+"_"+sigma+"px.tif");
+FinalStackA.close();
+IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            stackTEMP = null;
+            System.gc();
+}
+
+void Create2DStruct(sigma, INT) {
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+image.show();
+dim = image.getDimensions();
+width = dim[ 0 ];
+height = dim[ 1 ];
+channels = dim[ 2 ];
+slices = dim[ 3 ];
+frames = dim[ 4 ];
+stackTEMPa = new ImageStack(stackWidth, stackHeight);
+stackTEMPb = new ImageStack(stackWidth, stackHeight);
+  for ( s=1; s<=slices; s++ ) {
+		imp1 = new ImagePlus("temp", image.getStack().getProcessor(s).duplicate());
+IJ.run(imp1, "FeatureJ Structure", "largest middle smallest smoothing="+sigma+" integration="+INT);
+	imp1.close();
+	ImagePlus imp2a = WindowManager.getImage("temp smallest structure eigenvalues");
+	ImagePlus imp2b = WindowManager.getImage("temp largest structure eigenvalues");
+                 stackTEMPa.addSlice("TEMP", imp2a.getProcessor());
+                 imp2a.close();
+                 stackTEMPb.addSlice("TEMP", imp2b.getProcessor());
+                 imp2b.close();
+  }
+FinalStackA = new ImagePlus("stack", stackTEMPa);
+IJ.saveAs(FinalStackA, "Tiff", TempDir + File.separator+"2DStructSML_"+sigma+"px_Int"+INT+".tif");
+FinalStackA.close();
+FinalStackB = new ImagePlus("stack", stackTEMPb);
+IJ.saveAs(FinalStackB, "Tiff", TempDir + File.separator+"2DStructLRG_"+sigma+"pxInt"+INT+".tif");
+FinalStackB.close();
+IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            stackTEMP = null;
+            System.gc();
+}
+
+void Create2DGaussiansAndEachDOG (sigma1,sigma2,sigma3,sigma4) {
+		IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+		Gauss1 = duplicator.run(image);
+	IJ.run(Gauss1, "Gaussian Blur...", "radius="+sigma1+" stack");
+	IJ.saveAs(Gauss1, "Tiff", TempDir+ File.separator +"2DGaussian_"+sigma1+"px.tif");
+	Gauss2 = duplicator.run(image);
+	IJ.run(Gauss2, "Gaussian Blur...", "radius="+sigma2+" stack");
+	IJ.saveAs(Gauss2, "Tiff", TempDir+ File.separator +"2DGaussian_"+sigma2+"px.tif");
+			Gauss3 = duplicator.run(image);
+	IJ.run(Gauss3, "Gaussian Blur...", "radius="+sigma3+" stack");
+	IJ.saveAs(Gauss3, "Tiff", TempDir+ File.separator +"2DGaussian_"+sigma3+"px.tif");
+			Gauss4 = duplicator.run(image);
+	IJ.run(Gauss4, "Gaussian Blur...", "radius="+sigma4+" stack");
+		IJ.saveAs(Gauss4, "Tiff", TempDir+ File.separator +"2DGaussian_"+sigma4+"px.tif");
+
+	ImagePlus DOG1 = ImageCalculator.run(Gauss1, Gauss2, "Difference create 32-bit stack");
+	IJ.saveAs(DOG1, "Tiff", TempDir+ File.separator +"2DDoG_"+sigma1+"Vs"+sigma2+"px.tif");
+	DOG1.close();
+	ImagePlus DOG2 = ImageCalculator.run(Gauss1, Gauss3, "Difference create 32-bit stack");
+	IJ.saveAs(DOG2, "Tiff", TempDir+ File.separator +"2DDoG_"+sigma1+"Vs"+sigma3+"px.tif");
+	DOG2.close();
+	ImagePlus DOG3 = ImageCalculator.run(Gauss1, Gauss4, "Difference create 32-bit stack");
+	IJ.saveAs(DOG3, "Tiff", TempDir+ File.separator +"2DDoG_"+sigma1+"Vs"+sigma4+"px.tif");
+	DOG3.close();
+	ImagePlus DOG4 = ImageCalculator.run(Gauss2, Gauss3, "Difference create 32-bit stack");
+	IJ.saveAs(DOG4, "Tiff", TempDir+ File.separator +"2DDoG_"+sigma2+"Vs"+sigma3+"px.tif");
+	DOG4.close();
+	ImagePlus DOG5 = ImageCalculator.run(Gauss2, Gauss4, "Difference create 32-bit stack");
+	IJ.saveAs(DOG5, "Tiff", TempDir+ File.separator +"2DDoG_"+sigma2+"Vs"+sigma4+"px.tif");
+	DOG5.close();
+	ImagePlus DOG6 = ImageCalculator.run(Gauss3, Gauss4, "Difference create 32-bit stack");
+	IJ.saveAs(DOG6, "Tiff", TempDir+ File.separator +"2DDoG_"+sigma3+"Vs"+sigma4+"px.tif");
+	DOG6.close();
+	
+	IJ.run("Close All", "");
+              // force garbage collection (important for large images)
+            result = null; 
+            image = null;
+            System.gc();
+}
+
+
+//***DEFINE THE 2D FEATURES***
+//Individual features can be enabled or disabled as required, by commenting out those corresponding lines below.
+//For some features, certain parameters can be adjusted, such as the radius. These have been annotated where appropriate.
+
+void CreateTheFeatures() {
+	//THIS IS WHERE YOU CHOOSE THE FUNCTIONS TO RUN ON THE DATA
+
+
+//RunCLAHE(64);
+//UnsharpMask(3);
+//LogFilter();
+
+//varia
+CreateStandard2DStatistics(4);
+CreateStandard2DStatistics(8);
+CreateStandard2DStatistics(16);
+
+
+Create2DStruct(2,3);
+Create2DStruct(2,1);
+Create2DStruct(4,3);
+Create2DStruct(4,1);
+Create2DStruct(8,3);
+Create2DStruct(8,1);
+Create2DStruct(16,3);
+Create2DStruct(16,1);
+
+Create2DLaplacian(1);
+Create2DLaplacian(2);
+Create2DLaplacian(4);
+Create2DLaplacian(8);
+Create2DLaplacian(16);
+
+Create2DEdges(1);
+Create2DEdges(2);
+Create2DEdges(4);
+Create2DEdges(8);
+Create2DEdges(16);
+
+Create2DHessian(1);
+Create2DHessian(2);
+Create2DHessian(4);
+Create2DHessian(8);
+Create2DHessian(16);
+
+
+Create2DDerivatives(2,1);
+Create2DDerivatives(2,2);
+Create2DDerivatives(2,3);
+Create2DDerivatives(8,1);
+Create2DDerivatives(8,2);
+Create2DDerivatives(8,3);
+Create2DDerivatives(4,1);
+Create2DDerivatives(4,2);
+Create2DDerivatives(4,3);
+
+
+//Create2DGaussiansAndEachDOG(2,4,8,16);
+
+DetectXYLinearEdges(0);
+DetectXYLinearEdges(45);
+DetectXYLinearEdges(90);
+DetectXYLinearEdges(135);
+
+Create2DNeighbors(1);
+Create2DNeighbors(2);
+Create2DNeighbors(4);
+Create2DNeighbors(8);
+
+IJ.run("Close All", "");
+image = IJ.openVirtual(imgpath);
+    new StackConverter(image).convertToGray32();
+IJ.saveAs(image, "Tiff", TempDir + File.separator+"0riginal.tif");
+}
+
+void AddSliceFromAllStacks(slice) {
+listOfFiles = TempDir.listFiles();
+	stack = new ImageStack(stackWidth, stackHeight);
+for ( i = 0; i < listOfFiles.length; i++ ) {
+        image = IJ.openVirtual( listOfFiles[i].getCanonicalPath() );
+        String	featurename=image.getTitle().replace(".tif",""); 
+		image.setTitle(featurename);
+            stack.addSlice(featurename, image.getStack().getProcessor(slice));
+    }
+FinalStack = new ImagePlus("stack", stack);
+FinalStack.setCalibration(calibration);
+
+            IJ.saveAs(FinalStack, "Tiff",  outputDir + File.separator + ImgTitle + "_ExtraFeats_"+IJ.pad(slice,4)+".tif");
+        }
+
+void ExecuteFinalFeatureStackCreation() {
+	image = IJ.openVirtual(imgpath);
+dim = image.getDimensions(); //width, height, channels, slices, frames
+StackSlices = dim[ 3 ];
+for (i = 1; i <= StackSlices; i++) {
+AddSliceFromAllStacks(i);
+}
+}
+
+
+CreateTheFeatures();
+ExecuteFinalFeatureStackCreation();
+
+
+
+
+

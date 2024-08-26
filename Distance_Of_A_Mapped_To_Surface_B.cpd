@@ -1,0 +1,100 @@
+<CustomFilterDefinitions>
+  <CustomProxyDefinition name="Distance of A Mapped To Surface B" group="filters">
+    <CompoundSourceProxy id="55314" servers="1">
+      <Proxy group="filters" type="DataSetSurfaceFilter" id="32681" servers="1" compound_name="ExtractSurface1">
+        <Property name="Input" id="32681.Input" number_of_elements="1">
+          <Domain name="groups" id="32681.Input.groups"/>
+          <Domain name="input_type" id="32681.Input.input_type"/>
+        </Property>
+        <Property name="NonlinearSubdivisionLevel" id="32681.NonlinearSubdivisionLevel" number_of_elements="1">
+          <Element index="0" value="1"/>
+          <Domain name="range" id="32681.NonlinearSubdivisionLevel.range"/>
+        </Property>
+        <Property name="PieceInvariant" id="32681.PieceInvariant" number_of_elements="1">
+          <Element index="0" value="1"/>
+          <Domain name="bool" id="32681.PieceInvariant.bool"/>
+        </Property>
+      </Proxy>
+      <Proxy group="filters" type="DataSetSurfaceFilter" id="33190" servers="1" compound_name="ExtractSurface2">
+        <Property name="Input" id="33190.Input" number_of_elements="1">
+          <Domain name="groups" id="33190.Input.groups"/>
+          <Domain name="input_type" id="33190.Input.input_type"/>
+        </Property>
+        <Property name="NonlinearSubdivisionLevel" id="33190.NonlinearSubdivisionLevel" number_of_elements="1">
+          <Element index="0" value="1"/>
+          <Domain name="range" id="33190.NonlinearSubdivisionLevel.range"/>
+        </Property>
+        <Property name="PieceInvariant" id="33190.PieceInvariant" number_of_elements="1">
+          <Element index="0" value="1"/>
+          <Domain name="bool" id="33190.PieceInvariant.bool"/>
+        </Property>
+      </Proxy>
+      <Proxy group="filters" type="DataSetSurfaceFilter" id="50005" servers="1" compound_name="ExtractSurfaceOUTPUT">
+        <Property name="Input" id="50005.Input" number_of_elements="1">
+          <Proxy value="33727" output_port="0"/>
+          <Domain name="groups" id="50005.Input.groups"/>
+          <Domain name="input_type" id="50005.Input.input_type"/>
+        </Property>
+        <Property name="NonlinearSubdivisionLevel" id="50005.NonlinearSubdivisionLevel" number_of_elements="1">
+          <Element index="0" value="1"/>
+          <Domain name="range" id="50005.NonlinearSubdivisionLevel.range"/>
+        </Property>
+        <Property name="PieceInvariant" id="50005.PieceInvariant" number_of_elements="1">
+          <Element index="0" value="1"/>
+          <Domain name="bool" id="50005.PieceInvariant.bool"/>
+        </Property>
+      </Proxy>
+      <Proxy group="filters" type="ProgrammableFilter" id="33727" servers="1" compound_name="ProgrammableFilter1">
+        <Property name="CopyArrays" id="33727.CopyArrays" number_of_elements="1">
+          <Element index="0" value="0"/>
+          <Domain name="bool" id="33727.CopyArrays.bool"/>
+        </Property>
+        <Property name="InformationScript" id="33727.InformationScript" number_of_elements="1">
+          <Element index="0" value=""/>
+        </Property>
+        <Property name="Input" id="33727.Input" number_of_elements="2">
+          <Proxy value="32681" output_port="0"/>
+          <Proxy value="33190" output_port="0"/>
+          <Domain name="groups" id="33727.Input.groups"/>
+          <Domain name="input_type" id="33727.Input.input_type"/>
+        </Property>
+        <Property name="OutputDataSetType" id="33727.OutputDataSetType" number_of_elements="1">
+          <Element index="0" value="8"/>
+          <Domain name="enum" id="33727.OutputDataSetType.enum">
+            <Entry value="8" text="Same as Input"/>
+            <Entry value="0" text="vtkPolyData"/>
+            <Entry value="2" text="vtkStructuredGrid"/>
+            <Entry value="3" text="vtkRectilinearGrid"/>
+            <Entry value="4" text="vtkUnstructuredGrid"/>
+            <Entry value="6" text="vtkImageData"/>
+            <Entry value="10" text="vtkUniformGrid"/>
+            <Entry value="13" text="vtkMultiblockDataSet"/>
+            <Entry value="15" text="vtkHierarchicalBoxDataSet"/>
+            <Entry value="19" text="vtkTable"/>
+            <Entry value="33" text="vtkMolecule"/>
+          </Domain>
+        </Property>
+        <Property name="PythonPath" id="33727.PythonPath" number_of_elements="1">
+          <Element index="0" value=""/>
+        </Property>
+        <Property name="Script" id="33727.Script" number_of_elements="1">
+          <Element index="0" value="mesh = self.GetInputDataObject(0, 0)&#xa;&#xa;import paraview.vtk as vtk&#xa;&#xa;pdd = vtk.vtkImplicitPolyDataDistance()&#xa;pdd.SetInput(mesh)&#xa;&#xa;dataset = self.GetInputDataObject(0, 1)&#xa;output.CopyStructure(dataset)&#xa;&#xa;numPts = dataset.GetNumberOfPoints()&#xa;distArray = vtk.vtkDoubleArray()&#xa;distArray.SetName(&#x22;Distance&#x22;)&#xa;distArray.SetNumberOfComponents(1)&#xa;distArray.SetNumberOfTuples(numPts)&#xa;for i in range(numPts):&#xa;  pt = dataset.GetPoint(i)&#xa;  distArray.SetValue(i, pdd.EvaluateFunction(pt))&#xa;&#xa;output.GetPointData().AddArray(distArray)"/>
+        </Property>
+        <Property name="TimestepValues" id="33727.TimestepValues"/>
+        <Property name="UpdateExtentScript" id="33727.UpdateExtentScript" number_of_elements="1">
+          <Element index="0" value=""/>
+        </Property>
+      </Proxy>
+      <ExposedProperties>
+        <Property name="CopyArrays" proxy_name="ProgrammableFilter1" exposed_name="Copy Arrays"/>
+        <Property name="Input" proxy_name="ExtractSurface1" exposed_name="Objects for Distance Measurements"/>
+        <Property name="Parameters" proxy_name="ProgrammableFilter1" exposed_name="Parameters"/>
+        <Property name="Input" proxy_name="ExtractSurface2" exposed_name="Surfaces to Distance Map"/>
+      </ExposedProperties>
+      <OutputPort name="Distance Mapped Surfaces" proxy="ExtractSurfaceOUTPUT" port_index="0"/>
+      <Hints>
+        <ShowInMenu/>
+      </Hints>
+    </CompoundSourceProxy>
+  </CustomProxyDefinition>
+</CustomFilterDefinitions>

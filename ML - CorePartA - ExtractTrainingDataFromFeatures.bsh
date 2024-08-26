@@ -1,0 +1,110 @@
+# @File(label="FeatureStack directory1", description="Select the output directory", style="directory") FEATinputDir
+# @File(label="Binary Labels Directory", description="Select the output directory", style="directory") LABELinputDir
+# @File(label="Data Output directory", description="Select the output directory", style="directory") DATAoutputDir
+# @Integer(label="File Number To Train", description="which filenumber",value=1) fileNumberToTrain
+# @Integer(label="Num. of samples per class", description="Number of training samples per class and slice",value=2000) nSamples
+/*
+ * READ ME BEFORE RUNNING SCRIPT: 
+ * Before proceeding, ensure the following is true:
+ * 1) You have generated feature stacks for every slice in your original dataset using the ML_Features scripts.
+ * 2) Training labels exist, such that the training class for a voxel is indicated by it's value (i.e. Value of 0 = no class, Value of 1 = class1, Value of 2 = class 2, etc.)
+ * 3) The training labels are saved to a directory as individual tiffs, where each tiff represents one slice from the original dataset. 
+ * 4) That the number of training slices is equal to the number of feature stacks.
+ * 5) That you know which slice(s) are annotated for training, and have an approximate idea of the number of voxels per class that were annotated.
+ * 
+ * Once the training data has been extracted (as .arff files), the files can be pooled using WEKA.
+ * Combine the files in WEKA using the following command, with your appropriate file names and directory structure: 
+ * 		java weka.core.Instances append "C:\File1.arff" "C:\File2.arff" > "C:\File1+2.arff"
+ * 
+ */
+import ij.*;
+import ij.process.*;
+import ij.plugin.filter.*;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.gui.Roi;
+import ij.gui.PolygonRoi;
+import ij.plugin.Duplicator;
+import ij.process.FloatPolygon;
+import ij.process.StackConverter;
+import ij.io.*;
+import ij.process.ColorSpaceConverter;
+import ij.process.ByteProcessor;
+import trainableSegmentation.FeatureStack;
+import trainableSegmentation.FeatureStackArray;
+import trainableSegmentation.WekaSegmentation;
+import trainableSegmentation.utils.Utils;
+import ij.plugin.ImageCalculator; 
+
+
+listOfFiles1 = FEATinputDir.listFiles();
+listOfFiles2 = LABELinputDir.listFiles();
+duplicator = new Duplicator();
+
+InitialDecoyImage = IJ.createImage("Initial Decoy Image", "8-bit black", 512, 512, 1);
+	wekaSegmentation = new WekaSegmentation(InitialDecoyImage);
+
+void TrainOnMibMask(fileNum) {
+//ORIGINAL IMAGE IMPORT... PROBABLY NOT REQUIRED.
+listOfFiles1 = FEATinputDir.listFiles();
+listOfFiles2 = LABELinputDir.listFiles();
+
+        featurestack = IJ.openImage( listOfFiles1[fileNum].getCanonicalPath() );
+        String	imagename=featurestack.getTitle().replace(".tif",""); 
+        calibration = featurestack.getCalibration().copy();
+        labelsimage = IJ.openImage( listOfFiles2[fileNum].getCanonicalPath() );
+
+wekaSegmentation.loadNewImage(featurestack); 
+
+//START OF FEATURE IMPORT AND PROCESSING
+featuresArray = new FeatureStackArray(1);
+Nfeats=featurestack.getStackSize();
+labelsimage.show();
+IJ.run(labelsimage, "Select All", "");
+ClassStats = labelsimage.getStatistics(ImageStatistics.MIN_MAX);
+Nclasses=ClassStats.max;
+
+imagewidth=featurestack.getWidth();
+imageheight=featurestack.getHeight();
+    stack = featurestack.getStack();
+    features = new FeatureStack(imagewidth, imageheight, false );
+    features.setStack( stack );
+    featuresArray.set(features, 0);
+    featuresArray.setEnabledFeatures(features.getEnabledFeatures());
+wekaSegmentation.setFeatureStackArray(featuresArray);
+//END OF FEATURE IMPORT
+
+//Define arbitrary number of classes from label image
+List classes = new ArrayList();
+classes.add("class 1");
+classes.add("class 2");
+		for( i=2; i<Nclasses; i++ ) {
+    wekaSegmentation.addClass();
+    classes.add("class "+i);
+                result = null; 
+            image = null;
+            System.gc();
+		}
+//print(classes);
+
+//Add binary data for arbitrary number of classes in image
+		for( i=0; i<Nclasses; i++ ) {
+classthresh=i+1;
+classname="class "+classthresh;
+image=duplicator.run(labelsimage);
+IJ.setRawThreshold(image, classthresh, classthresh, null);
+IJ.run(image, "Convert to Mask", "");
+wekaSegmentation.addRandomData(image, features, classname, nSamples);
+
+		}
+
+// save data into a ARFF file
+wekaSegmentation.saveData( DATAoutputDir + File.separator + imagename +"data.arff");
+IJ.run("Close All", "");
+}
+
+
+TrainOnMibMask(fileNumberToTrain - 1);
+
+

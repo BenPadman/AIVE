@@ -1,0 +1,61 @@
+# @File(label="Features directory", description="Select the output directory", style="directory") FEATinputDir
+# @File(label="Weka model", description="Select the Weka model to apply") modelPath
+# @File(label="Output directory", description="Select the output directory", style="directory") outputDir
+# @Integer(label="Starting Slice", description="StartSlice",value=1) StartSlice
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.gui.Roi;
+import ij.gui.PolygonRoi;
+import ij.plugin.Duplicator;
+import ij.process.FloatPolygon;
+import ij.process.StackConverter;
+import ij.io.*;
+import ij.process.ColorSpaceConverter;
+import ij.process.ByteProcessor;
+import trainableSegmentation.FeatureStack;
+import trainableSegmentation.FeatureStackArray;
+import trainableSegmentation.WekaSegmentation;
+import trainableSegmentation.utils.Utils;
+
+InitialDecoyImage = IJ.createImage("Initial Decoy Image", "8-bit black", 512, 512, 1);
+	wekaSegmentation = new WekaSegmentation(true);
+wekaSegmentation.loadClassifier( modelPath.getCanonicalPath() );
+    print("Classifier loaded");
+    
+void ApplyClassifierToFeatureImage(featureimage) {
+			//START OF FEATURE ASSIGNMENT
+    stack = featureimage.getStack();
+    ImgTitle=featureimage.title;
+    Nfeats=featureimage.getStackSize();
+    print("Processing:"+ImgTitle);
+featuresArray = new FeatureStackArray(1);    
+imagewidth=stack.getWidth();
+imageheight=stack.getHeight();
+String	OutputName=featureimage.title.replace(".tif",""); 
+decoyimage = IJ.createImage(OutputName, "8-bit black", imagewidth, imageheight, 1);//setTrainingImage
+wekaSegmentation.setTrainingImage(decoyimage); //The decoy images are required... for some reason
+    features = new FeatureStack(imagewidth, imageheight, false );
+    features.setStack( stack );
+    featuresArray.set(features, 0);
+    featuresArray.setEnabledFeatures(features.getEnabledFeatures());  
+wekaSegmentation.setFeatureStackArray( featuresArray );
+FinalFeatureStack=wekaSegmentation.getFeatureStackArray();
+		//END OF FEATURE ASSIGNMENT; APPLY CLASSIFIER
+output = wekaSegmentation.applyClassifier(decoyimage, FinalFeatureStack, 0, true);//if true, calculates probability maps; if false, outputs binarized results
+  IJ.saveAs(output, "Tiff", outputDir + File.separator + OutputName + "_WEKA.tif");
+              result = null; 
+            image = null;
+            System.gc();
+}
+
+
+listOfFiles = FEATinputDir.listFiles();
+for ( i = StartSlice-1; i < listOfFiles.length; i++ ) {
+        featureimage = IJ.openImage( listOfFiles[i].getCanonicalPath() );
+ApplyClassifierToFeatureImage(featureimage);
+                        IJ.wait(100);
+            System.gc(); 
+            IJ.wait(100);
+    }

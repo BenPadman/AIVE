@@ -1,0 +1,79 @@
+# @File(label="Folder1", description="Folder1", style="directory") Dir1
+# @File(label="Folder2", description="Folder2", style="directory") Dir2
+# @File(label="Output directory", description="Select the output directory", style="directory") FEAToutputDir
+# @Integer(label="File Number to start from", description="StartSlice",value=1) StartFile
+/*
+ * FEATURE STACK MERGER
+ * This script will take the 2 folders of feature stacks generated in Part1 and Part2, then merge them.
+ * Ensure you have enough storage space before proceeding. 
+ */
+
+import ij.*;
+import ij.process.*;
+import ij.plugin.filter.*;
+import ij.IJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.gui.Roi;
+import ij.gui.PolygonRoi;
+import ij.plugin.Duplicator;
+import ij.process.FloatPolygon;
+import ij.process.StackConverter;
+import ij.io.*;
+import ij.process.ColorSpaceConverter;
+import ij.process.ByteProcessor;
+import ij.io.FileSaver;
+import trainableSegmentation.FeatureStack;
+import trainableSegmentation.FeatureStackArray;
+import trainableSegmentation.WekaSegmentation;
+import trainableSegmentation.utils.Utils;
+import ij.plugin.ImageCalculator; 
+
+void MergeFeatureStacks(File1, File2) {
+//CLEAR THE RAM
+System.gc(); 
+IJ.wait(100);
+IJ.log("Clearing RAM");
+
+//CLEAR THE RAM
+ tempRename1=null;
+ tempRename2=null;
+ stack1=null;
+ FinalStack1=null;
+					
+tempRename1 = IJ.openImage(File1);
+ImgTitle=tempRename1.title;
+IJ.log("Merging Feature Stacks");
+
+tempRename2 = IJ.openImage(File2);
+tempRename2dims = tempRename2.getDimensions();
+tempRename2slices = tempRename2dims[ 3 ];
+stack1=tempRename1.getStack();
+for ( i = 2; i <= tempRename2slices; i++ ) {
+featureimage = tempRename2.getStack().getProcessor(i);
+featurename = tempRename2.getStack().getShortSliceLabel(i);
+stack1.addSlice(featurename, featureimage);
+}
+IJ.wait(100);
+FinalStack1 = new ImagePlus("stack", stack1);
+ new FileSaver( FinalStack1 ).saveAsTiff( FEAToutputDir + File.separator + ImgTitle +".tif" ); //saves the stack 
+   }
+
+void MergeFeatureFolders(Directory1, Directory2, StartNum) {
+listOfFiles1 = Directory1.listFiles();
+listOfFiles2 = Directory2.listFiles();
+int NumberOfFiles=listOfFiles1.length;
+//NumberOfFiles=1;
+	int StartAt = StartNum-1;
+	int EndAt = NumberOfFiles;
+	for (int i=StartAt; i < EndAt; i++ ) {
+file1 = listOfFiles1[i].getCanonicalPath();
+file2 = listOfFiles2[i].getCanonicalPath();
+	MergeFeatureStacks(file1, file2);
+	IJ.log("Merging slice "+i+" of "+EndAt);
+	} 
+}
+
+   MergeFeatureFolders(Dir1, Dir2, StartFile)
+
+   
