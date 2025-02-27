@@ -1,0 +1,28 @@
+This text file has information that may be useful when running AIVE.
+
+AIVE, or AI directed voxel extraction, is an image processing technique for working
+with FIB-SEM image datasets. It primarily involves an image calculation requiring
+3 key images.
+
+The original image is used to create 3 stacks:
+Source image (original image with some pre-processing)
+AI membrane prediction result
+Regions of Interest (ROIs) segmentations
+
+These three image stacks are all that is needed for running the AIVE merge
+calculations. All three images need to be tif stacks.
+
+The AIVE output may also be post processed to determine volumetric calculations,
+or further processed for import into downstream software, such as 3D environments.
+
+We provide a pipeline here to generate the three images required, however, this
+is just a suggestion for one way to achieve these images. You may ultimately
+choose to optimise or modify these method to your own data. For this reason the
+code for this plugin is left open.
+
+Alternatively you may choose a different approach from those suggested.
+For example, here we have the basic pipeline for training a reproducible and
+documentable random forest model. However, you may choose to train a different
+type of AI model. The only thing you will need to confirm is that your AI output
+is saved as a .tif image, preferably in 32-bit, where the gray values correspond 
+to the probability values between 0 and 1.
