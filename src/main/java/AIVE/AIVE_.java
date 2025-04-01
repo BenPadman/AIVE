@@ -77,7 +77,7 @@ public class AIVE_ implements PlugIn, ActionListener {
        aivepan2.add(bAM4,c);
 
        c.gridx=2; c.gridy=3; c.gridwidth=2;
-       aivepan2.add(new JLabel("Organelle class spliter:",JLabel.CENTER ),c);
+       aivepan2.add(new JLabel("ROI class spliter:",JLabel.CENTER ),c);
 
        JButton bAM1 = new JButton("Binarise Classes");
        bAM1.addActionListener(this);
