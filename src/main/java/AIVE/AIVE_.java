@@ -165,13 +165,13 @@ public class AIVE_ implements PlugIn, ActionListener {
          AIVEInfo.put("Info", "AIVEInfo.txt");
 
          //Add main macro Buttons as Keys and Macro names as values
-         AIVEMacros.put("3D CLAHE", "CLAHE - Batch_3DCLAHE_AnisotropicXYZ.ijm");
-         AIVEMacros.put("Denoise CLAHE", "AIVE - Macro4 - MedianFilterTheCLAHEstacks.ijm");
-         AIVEMacros.put("Binarise Classes", "AIVE - Macro1 - ConvertLabelImageToBinaryStacks.ijm");
-         AIVEMacros.put("Blur Binaries", "AIVE - Macro2 - GaussianFilterTheClassBinaries.ijm");
-         AIVEMacros.put("AIVE Merge 1", "AIVE - Macro3 - MergeMLoutputsWithClasses.ijm");
-         AIVEMacros.put("AIVE Merge 2", "AIVE - Macro5 - MergeTheMaskedMLoutputsWithCLAHE.ijm");
-         AIVEMacros.put("Add Buffer", "Post-AIVE - PrepDataFor3DEnvironments.ijm");         
+         AIVEMacros.put("3D CLAHE", "CLAHE-Batch-3DCLAHE-AnisotropicXYZ.ijm");
+         AIVEMacros.put("Denoise CLAHE", "AIVE-Macro4-MedianFilterTheCLAHEstacks.ijm");
+         AIVEMacros.put("Binarise Classes", "AIVE-Macro1-ConvertLabelImageToBinaryStacks.ijm");
+         AIVEMacros.put("Blur Binaries", "AIVE-Macro2-GaussianFilterTheClassBinaries.ijm");
+         AIVEMacros.put("AIVE Merge 1", "AIVE-Macro3-MergeMLoutputsWithClasses.ijm");
+         AIVEMacros.put("AIVE Merge 2", "AIVE-Macro5-MergeTheMaskedMLoutputsWithCLAHE.ijm");
+         AIVEMacros.put("Add Buffer", "Post-AIVE-PrepDataFor3DEnvironments.ijm");         
          AIVEMacros.put("MacOS: See Dialogue", "JFileMacOS.ijm");
 
          // For opening sub-windows from control panel

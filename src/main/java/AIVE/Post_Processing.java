@@ -61,9 +61,9 @@ public class Post_Processing implements PlugIn, ActionListener {
 
         //Add Buttons as Keys and Macro names as values
         AIVEInfo.put("Info", "AIVE-PP-Info.txt");
-        AIVEPoP.put("Batch Measure", "Post-AIVE - BatchMorpholibJMeasurement.ijm");
-        AIVEPoP.put("Fill Mitos", "Post-AIVE - FillMitochondrialStructures.ijm");
-        AIVEPoP.put("Vesicle Separator", "Post-AIVE - StrayVesicleSeparator.ijm");
+        AIVEPoP.put("Batch Measure", "Post-AIVE-BatchMorpholibJMeasurement.ijm");
+        AIVEPoP.put("Fill Mitos", "Post-AIVE-FillMitochondrialStructures.ijm");
+        AIVEPoP.put("Vesicle Separator", "Post-AIVE-StrayVesicleSeparator.ijm");
          
         if (AIVEPoP.containsKey(name)==true) {
             IJ.log("running: " + name );
