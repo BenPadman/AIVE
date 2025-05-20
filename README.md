@@ -37,10 +37,28 @@ Modified code will still run via the plugin as long as the file names are unchan
 We recognise that each new dataset comes with its own challenges and unique features and users may need a slightly different approach. Users are free to copy and modify files for their own purposes in accordance with the licensing terms. Additionally, specific versions could be saved elsewhere to distinguish them from the original plugin code.
 
 Advanced users may choose to optimise and recompile the code to fit their unique analysis requirements. The source code is available as a starting point.
-This java based plugin was compiled using VS Code and the Maven extension.
+This Java 1.8 based plugin was compiled using VS Code and the Maven extension.
+
+### Plugin use
+The AIVE plugin should now be installed and is accessible via the plugins menu as "AIVE". There are four sub-menu options:
+
+"AIVE control panel"
+This option will open a user interface with all the main tasks required for AIVE. From here you can also access the other sub-menu option intefaces.
+
+"CLAHE Anisotropic" 
+This option will run the Anisotropic CLAHE filter on an opened image
+
+"Membrane Prediction:
+This option allows you to jump straight to the Membrane Prediction interface - where you can train and apply random forest classifiers.
+
+"Post Processing"
+This option allows you to jump straight to the post processing interface. Here you can run commands for batch measurement, as well as filling and separating vesicles.
+
 
 ### Compatibility
 This plugin has been tested on Windows, Linux based HPC, and MacOS with FIJI version 1.53t and 1.54h. It should be compatible with many older versions. 
+
+FIJI/ImageJ with Java 21 - this plugin has been tested in the latest win64-jdk FIJI build with Java 21. Initial tests have been successful.
 
 ## Future directions
 This is the early version of the AIVE plugin. We aim to develop the plugin to be even more user friendly. 
